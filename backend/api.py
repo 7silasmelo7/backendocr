@@ -5,6 +5,8 @@ import io
 import os
 from dotenv import load_dotenv 
 from backend.database import get_connection, init_db
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 load_dotenv()
@@ -62,11 +64,17 @@ def ocr():
 
     texto = processar_ocr_externo(filename, conteudo)
 
+    # Gera a data e hora atual baseada no fuso horário local
+    fuso_local = ZoneInfo("America/Sao_Paulo")
+    data_atual_local = datetime.now(fuso_local).strftime("%Y-%m-%d %H:%M:%S")
+
     conn = get_connection()
     cursor = conn.cursor()
+    
+    # Salva explicitamente a data e hora local no banco
     cursor.execute(
-        "INSERT INTO ocr_results (filename, image, text) VALUES (?, ?, ?)",
-        (filename, conteudo, texto)
+        "INSERT INTO ocr_results (filename, image, text, created_at) VALUES (?, ?, ?, ?)",
+        (filename, conteudo, texto, data_atual_local)
     )
     conn.commit()
     novo_id = cursor.lastrowid
