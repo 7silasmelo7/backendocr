@@ -134,20 +134,7 @@ curl http://localhost:8000/status
 
 ---
 
-### Modo 2 — Interface Gráfica (Desktop)
 
-```bash
-python -m backend.app
-```
-
-A janela da aplicação será aberta. A partir dela você pode:
-
-1. Clicar em **📁 Selecionar Arquivo** para escolher uma imagem ou PDF
-2. Aguardar o processamento do OCR
-3. Visualizar o texto extraído na tela
-4. Clicar em **💾 Exportar para .TXT** para salvar o resultado
-
----
 
 ## 🔌 Endpoints da API
 
