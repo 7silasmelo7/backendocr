@@ -134,7 +134,20 @@ curl http://localhost:8000/status
 
 ---
 
+### Modo 2 — Executando com Docker e Docker Compose (Recomendado)
 
+O projeto conta com um `Dockerfile` e um `docker-compose.yml` pré-configurados, permitindo subir a API inteira e suas dependências com apenas um comando.
+
+**1. Configure as variáveis de ambiente:**
+Certifique-se de ter criado o arquivo `.env` com a sua `OCR_API_KEY` (conforme detalhado na seção [Configuração](#-configuração)).
+
+**2. Inicie o container:**
+Na raiz da pasta do backend (onde o arquivo `docker-compose.yml` está localizado), execute o comando abaixo no terminal:
+
+```bash
+docker-compose up -d --build
+```
+---
 
 ## 🔌 Endpoints da API
 
