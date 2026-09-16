@@ -64,14 +64,14 @@ def ocr():
 
     texto = processar_ocr_externo(filename, conteudo)
 
-    # Gera a data e hora atual baseada no fuso horário local
+    # Gera a data e hora  baseada no fuso horário local
     fuso_local = ZoneInfo("America/Sao_Paulo")
     data_atual_local = datetime.now(fuso_local).strftime("%Y-%m-%d %H:%M:%S")
 
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Salva explicitamente a data e hora local no banco
+    # Salva data e hora local no banco
     cursor.execute(
         "INSERT INTO ocr_results (filename, image, text, created_at) VALUES (?, ?, ?, ?)",
         (filename, conteudo, texto, data_atual_local)
