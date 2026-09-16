@@ -36,7 +36,13 @@ backend/
 │   ├── database.py    # Conexão e inicialização do banco SQLite
 │   └── .env           # Variáveis de ambiente (não versionar!)
 ├── package.json
+├── package-lock.json
+├── docker-compose.yml
+├── Dockerfile
+├── README.md
+├── requirements.txt
 └── ocr_results.db     # Banco de dados (gerado automaticamente)
+
 ```
 
 ---
