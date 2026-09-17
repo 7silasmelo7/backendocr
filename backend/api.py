@@ -23,6 +23,8 @@ CORS(app)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "4<!Nc6s Gy!j;<^:a>mJ")
 jwt = JWTManager(app)
 
+app.config["JWT_VERIFY_SUB"] = False
+
 
 OCR_API_KEY = os.getenv("OCR_API_KEY")
 OCR_URL = "https://api.ocr.space/parse/image"
@@ -96,7 +98,7 @@ def login():
             "email": user["email"],
             "role": user["role"]
         }
-        token_acesso = create_access_token(identity=identidade)
+        token_acesso = create_access_token(identity=str(user["id"]))
         return jsonify({"token": token_acesso, "email": email, "role": user["role"]}), 200
     
     return jsonify({"erro": "Credenciais inválidas"}), 401
@@ -127,7 +129,7 @@ def status():
 def ocr():
 
     usuario_atual = get_jwt_identity()
-    user_id = usuario_atual["id"]
+    user_id = int(get_jwt_identity())
 
     if "arquivo" not in request.files:
         return jsonify({"erro": "Envie um arquivo no campo 'arquivo'"}), 400
@@ -147,7 +149,7 @@ def ocr():
     
     # Salva data e hora local no banco
     cursor.execute(
-        "INSERT INTO ocr_results (user_id, filename, image, text, created_at) VALUES (?, ?, ?, ?)",
+        "INSERT INTO ocr_results (user_id, filename, image, text, created_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, filename, conteudo, texto, data_atual_local)
     )
     conn.commit()
@@ -173,22 +175,22 @@ def listar_ocr():
 @app.route("/ocr/paginado", methods=["GET"])
 @jwt_required()
 def paginado():
+    # Pega o ID diretamente do token e converte para número
+    user_id = int(get_jwt_identity())
 
-    usuario_atual = get_jwt_identity()
-    user_id = usuario_atual["id"]
-    role = usuario_atual["role"]
+    # Consulta o banco para descobrir se é 'master' ou 'user'
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
+    user_db = cursor.fetchone()
+    role = user_db["role"] if user_db else "user"
 
     pagina = int(request.args.get("pagina", 1))
     limite = int(request.args.get("limite", 10))
     busca = request.args.get("busca", "")
-
     offset = (pagina - 1) * limite
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
     if role == "master":
-        
         cursor.execute(
             """
             SELECT id, filename, created_at
@@ -200,13 +202,8 @@ def paginado():
             (f"%{busca}%", limite, offset)
         )
         rows = cursor.fetchall()
-
-        cursor.execute(
-            "SELECT COUNT(*) FROM ocr_results WHERE filename LIKE ?",
-            (f"%{busca}%",)
-        )
-
-    else :
+        cursor.execute("SELECT COUNT(*) FROM ocr_results WHERE filename LIKE ?", (f"%{busca}%",))
+    else:
         cursor.execute(
             """
             SELECT id, filename, created_at
@@ -218,12 +215,7 @@ def paginado():
             (user_id, f"%{busca}%", limite, offset)
         )
         rows = cursor.fetchall()
-
-        cursor.execute(
-            "SELECT COUNT(*) FROM ocr_results WHERE user_id = ? AND filename LIKE ?",
-            (user_id, f"%{busca}%",)
-        )
-    
+        cursor.execute("SELECT COUNT(*) FROM ocr_results WHERE user_id = ? AND filename LIKE ?", (user_id, f"%{busca}%"))
         
     total = cursor.fetchone()[0]
     conn.close()
