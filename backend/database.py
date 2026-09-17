@@ -30,7 +30,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
-            reset_token TEXT,
+            reset_token TEXT
         )
         """
     )
