@@ -91,8 +91,13 @@ def login():
 
     # Verifica se o usuário existe e se a senha criptografada bate
     if user and check_password_hash(user["password_hash"], senha):
-        token_acesso = create_access_token(identity=email)
-        return jsonify({"token": token_acesso, "email": email}), 200
+        identidade = {
+            "id": user["id"],
+            "email": user["email"],
+            "role": user["role"]
+        }
+        token_acesso = create_access_token(identity=identidade)
+        return jsonify({"token": token_acesso, "email": email, "role": user["role"]}), 200
     
     return jsonify({"erro": "Credenciais inválidas"}), 401
 
@@ -120,6 +125,10 @@ def status():
 @app.route("/ocr", methods=["POST"])
 @jwt_required()
 def ocr():
+
+    usuario_atual = get_jwt_identity()
+    user_id = usuario_atual["id"]
+
     if "arquivo" not in request.files:
         return jsonify({"erro": "Envie um arquivo no campo 'arquivo'"}), 400
 
@@ -138,8 +147,8 @@ def ocr():
     
     # Salva data e hora local no banco
     cursor.execute(
-        "INSERT INTO ocr_results (filename, image, text, created_at) VALUES (?, ?, ?, ?)",
-        (filename, conteudo, texto, data_atual_local)
+        "INSERT INTO ocr_results (user_id, filename, image, text, created_at) VALUES (?, ?, ?, ?)",
+        (user_id, filename, conteudo, texto, data_atual_local)
     )
     conn.commit()
     novo_id = cursor.lastrowid
@@ -164,6 +173,11 @@ def listar_ocr():
 @app.route("/ocr/paginado", methods=["GET"])
 @jwt_required()
 def paginado():
+
+    usuario_atual = get_jwt_identity()
+    user_id = usuario_atual["id"]
+    role = usuario_atual["role"]
+
     pagina = int(request.args.get("pagina", 1))
     limite = int(request.args.get("limite", 10))
     busca = request.args.get("busca", "")
@@ -172,22 +186,45 @@ def paginado():
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, filename, created_at
-        FROM ocr_results
-        WHERE filename LIKE ?
-        ORDER BY id DESC
-        LIMIT ? OFFSET ?
-        """,
-        (f"%{busca}%", limite, offset)
-    )
-    rows = cursor.fetchall()
 
-    cursor.execute(
-        "SELECT COUNT(*) FROM ocr_results WHERE filename LIKE ?",
-        (f"%{busca}%",)
-    )
+    if role == "master":
+        
+        cursor.execute(
+            """
+            SELECT id, filename, created_at
+            FROM ocr_results
+            WHERE filename LIKE ?
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (f"%{busca}%", limite, offset)
+        )
+        rows = cursor.fetchall()
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM ocr_results WHERE filename LIKE ?",
+            (f"%{busca}%",)
+        )
+
+    else :
+        cursor.execute(
+            """
+            SELECT id, filename, created_at
+            FROM ocr_results
+            WHERE user_id = ? AND filename LIKE ?
+            ORDER BY id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (user_id, f"%{busca}%", limite, offset)
+        )
+        rows = cursor.fetchall()
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM ocr_results WHERE user_id = ? AND filename LIKE ?",
+            (user_id, f"%{busca}%",)
+        )
+    
+        
     total = cursor.fetchone()[0]
     conn.close()
 
@@ -197,6 +234,24 @@ def paginado():
         "limite": limite,
         "resultados": [dict(row) for row in rows]
     })
+
+@app.route("/auth/criar-master", methods=["POST"])
+def criar_master():
+    dados = request.json
+    email = dados.get("email")
+    senha = dados.get("senha")
+    hash_senha = generate_password_hash(senha)
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Força o role 'master' diretamente no banco
+        cursor.execute("INSERT INTO users (email, password_hash, role) VALUES (?, ?, 'master')", (email, hash_senha))
+        conn.commit()
+        conn.close()
+        return jsonify({"mensagem": "Usuário MASTER criado com sucesso!"}), 201
+    except Exception as e:
+        return jsonify({"erro": "Email já cadastrado"}), 400
 
 
 @app.route("/ocr/<int:item_id>", methods=["GET"])
