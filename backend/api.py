@@ -8,11 +8,20 @@ from backend.database import get_connection, init_db
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import uuid
+
+
+
 
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "4<!Nc6s Gy!j;<^:a>mJ")
+jwt = JWTManager(app)
 
 
 OCR_API_KEY = os.getenv("OCR_API_KEY")
@@ -47,13 +56,69 @@ def processar_ocr_externo(filename, file_bytes):
         print("Erro OCR externo:", e)
         return "Erro ao processar OCR externo."
 
+@app.route("/auth/cadastro", methods=["POST"])
+def cadastro():
+    dados = request.json
+    email = dados.get("email")
+    senha = dados.get("senha")
+
+    if not email or not senha:
+        return jsonify({"erro": "Email e senha são obrigatórios"}), 400
+
+    hash_senha = generate_password_hash(senha)
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, hash_senha))
+        conn.commit()
+        conn.close()
+        return jsonify({"mensagem": "Usuário cadastrado com sucesso!"}), 201
+    except Exception as e:
+        return jsonify({"erro": "Email já cadastrado"}), 400
+
+@app.route("/auth/login", methods=["POST"])
+def login():
+    dados = request.json
+    email = dados.get("email")
+    senha = dados.get("senha")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+
+    # Verifica se o usuário existe e se a senha criptografada bate
+    if user and check_password_hash(user["password_hash"], senha):
+        token_acesso = create_access_token(identity=email)
+        return jsonify({"token": token_acesso, "email": email}), 200
+    
+    return jsonify({"erro": "Credenciais inválidas"}), 401
+
+@app.route("/auth/esqueci-senha", methods=["POST"])
+def esqueci_senha():
+    dados = request.json
+    email = dados.get("email")
+
+    # 1. Verificar se o e-mail existe no banco
+    # 2. Gerar um token único (ex: token = str(uuid.uuid4()))
+    # 3. Salvar esse token na coluna 'reset_token' do usuário
+    # 4. Enviar um e-mail com o link contendo o token (ex: http://seu-site.com/reset?token=XYZ)
+    
+    # Nota: Para envio real de e-mails, você precisará usar bibliotecas como 'flask-mail' ou APIs como SendGrid.
+    return jsonify({"mensagem": "Se o e-mail existir, um link de recuperação será enviado."}), 200
+
 
 @app.route("/status", methods=["GET"])
 def status():
     return jsonify({"status": "API funcionando"}), 200
 
 
+
+
 @app.route("/ocr", methods=["POST"])
+@jwt_required()
 def ocr():
     if "arquivo" not in request.files:
         return jsonify({"erro": "Envie um arquivo no campo 'arquivo'"}), 400
@@ -83,7 +148,10 @@ def ocr():
     return jsonify({"id": novo_id, "texto": texto}), 201
 
 
+
+
 @app.route("/ocr", methods=["GET"])
+@jwt_required()
 def listar_ocr():
     conn = get_connection()
     cursor = conn.cursor()
@@ -94,6 +162,7 @@ def listar_ocr():
 
 
 @app.route("/ocr/paginado", methods=["GET"])
+@jwt_required()
 def paginado():
     pagina = int(request.args.get("pagina", 1))
     limite = int(request.args.get("limite", 10))
@@ -131,6 +200,7 @@ def paginado():
 
 
 @app.route("/ocr/<int:item_id>", methods=["GET"])
+@jwt_required()
 def buscar(item_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -150,6 +220,7 @@ def buscar(item_id):
 
 
 @app.route("/ocr/<int:item_id>/imagem", methods=["GET"])
+@jwt_required()
 def obter_imagem(item_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -168,6 +239,7 @@ def obter_imagem(item_id):
 
 
 @app.route("/ocr/<int:item_id>/texto", methods=["GET"])
+@jwt_required()
 def baixar_texto(item_id):
     conn = get_connection()
     cursor = conn.cursor()
@@ -186,6 +258,7 @@ def baixar_texto(item_id):
 
 
 @app.route("/ocr/<int:item_id>", methods=["PUT"])
+@jwt_required()
 def atualizar(item_id):
     dados = request.json
     if not dados or "texto" not in dados:
@@ -201,6 +274,7 @@ def atualizar(item_id):
 
 
 @app.route("/ocr/<int:item_id>", methods=["DELETE"])
+@jwt_required()
 def deletar(item_id):
     conn = get_connection()
     cursor = conn.cursor()
