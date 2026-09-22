@@ -20,14 +20,14 @@
 
 ## 📖 Sobre o Projeto
 
-O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento e gestão segura de documentos e imagens extraídas via OCR[cite: 3]. O sistema conta com:
+O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento e gestão segura de documentos e imagens extraídas via OCR. O sistema conta com:
 
-- **Autenticação Segura:** Controlo de acesso baseado em JSON Web Tokens (`flask-jwt-extended`) e senhas encriptadas com Werkzeug[cite: 3].
+- **Autenticação Segura:** Controle de acesso baseado em JSON Web Tokens (`flask-jwt-extended`) e senhas encriptadas com Werkzeug.
 
 - **Níveis de Acesso:**
 
-  - **Usuário Comum (`user`):** Visualiza e gere apenas os seus próprios históricos de OCR[cite: 3].
-  - **Usuário Master (`master`):** Acesso global e irrestrito a todos os arquivos extraídos por qualquer utilizador do sistema[cite: 3].
+  - **Usuário Comum (`user`):** Visualiza e gere apenas os seus próprios históricos de OCR.
+  - **Usuário Master (`master`):** Acesso global e irrestrito a todos os arquivos extraídos por qualquer utilizador do sistema.
 
 - **Integração Externa:** Processamento óptico de caracteres utilizando a [API OCR.space](https://ocr.space/ocrapi) em português.
 
@@ -52,15 +52,15 @@ backend/
 
 | Tecnologia | Finalidade |
 |------------|-----------|
-| [Python 3.10+](https://python.org) | Linguagem principal do backend[cite: 3] |
-| [Flask](https://flask.palletsprojects.com/) | Framework para construção da API REST[cite: 3] |
-| [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/) | Gestão de autenticação baseada em tokens JWT[cite: 3] |
+| [Python 3.10+](https://python.org) | Linguagem principal do backend |
+| [Flask](https://flask.palletsprojects.com/) | Framework para construção da API REST |
+| [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/) | Gestão de autenticação baseada em tokens JWT |
 | [Flasgger](https://github.com/flasgger/flasgger) | Documentação interativa da API baseada em Swagger/OpenAPI |
 | [Flask-CORS](https://flask-cors.readthedocs.io/) | Liberação de requisições de origem cruzada para o frontend |
-| [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | Leitura e manipulação de documentos PDF[cite: 3] |
-| [Pillow](https://pillow.readthedocs.io/) | Manipulação de imagens[cite: 3] |
-| [OCR.space API](https://ocr.space/ocrapi) | Reconhecimento óptico de texto[cite: 3, 4] |
-| [SQLite](https://sqlite.org/) | Banco de dados relacional leve[cite: 3] |
+| [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | Leitura e manipulação de documentos PDF |
+| [Pillow](https://pillow.readthedocs.io/) | Manipulação de imagens |
+| [OCR.space API](https://ocr.space/ocrapi) | Reconhecimento óptico de texto |
+| [SQLite](https://sqlite.org/) | Banco de dados relacional leve |
 
 ---
 
@@ -69,10 +69,10 @@ backend/
 Certifique-se de ter instalado em sua máquina:
 
 Certifique-se de ter instalado em sua máquina:
-- **Python 3.10 ou superior**[cite: 3]
+- **Python 3.10 ou superior**
 - **pip** (incluso com o Python)
 - **Docker** (opcional, caso prefira rodar conteinerizado)
-- **Chave de API** gratuita do OCR.space[cite: 3]
+- **Chave de API** gratuita do OCR.space
 
 ---
 
@@ -82,8 +82,13 @@ Certifique-se de ter instalado em sua máquina:
 
 ```bash
 git clone <https://github.com/7silasmelo7/backendocr>
+
+```
+
+```
 cd backend
 ```
+
 
 ### 2. Crie e ative um ambiente virtual
 
@@ -172,7 +177,7 @@ Para testar as rotas protegidas:
 
 - GET /status — Verifica se a API está online e a operar corretamente.
 
-- POST /ocr — Realiza o upload de um arquivo (imagem/PDF), processa via OCR externo e persiste no banco vinculado ao ID do utilizador autenticado[cite: 4].
+- POST /ocr — Realiza o upload de um arquivo (imagem/PDF), processa via OCR externo e persiste no banco vinculado ao ID do utilizador autenticado.
 
 - GET /ocr — Lista todos os registos de OCR.
 
