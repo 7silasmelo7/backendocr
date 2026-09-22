@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Define o diretório de trabalho principal
-WORKDIR /backend
+WORKDIR /app
 
 # Copia o requirements para a raiz do container
 COPY requirements.txt .

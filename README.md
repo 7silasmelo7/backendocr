@@ -1,6 +1,6 @@
-# 🔍 Leitor Inteligente de OCR
+# 🔍 Leitor Inteligente de OCR com Autenticação e Níveis de Acesso
 
-> Sistema completo de **reconhecimento óptico de caracteres (OCR)** que combina uma API REST com uma interface gráfica. Suporta imagens e PDFs, armazena os resultados localmente e permite exportação do texto extraído.
+> Sistema completo de **reconhecimento óptico de caracteres (OCR)** com arquitetura desacoplada, autenticação JWT, múltiplos níveis de acesso (User/Master), documentação interativa via Swagger e persistência em SQLite.
 
 ---
 
@@ -11,34 +11,35 @@
 - [Pré-requisitos](#-pré-requisitos)
 - [Instalação](#-instalação)
 - [Configuração](#-configuração)
+- [Documentação da API (Swagger)](#-documentação-da-api-swagger)
 - [Como Executar](#-como-executar)
 - [Endpoints da API](#-endpoints-da-api)
-- [Formatos Suportados](#-formatos-suportados)
-- [Banco de Dados](#-banco-de-dados)
+- [Banco de Dados e Permissões](#-banco-de-dados-e-permissões)
 
 ---
 
 ## 📖 Sobre o Projeto
 
-O **Leitor Inteligente de OCR** é composto por dois modos de uso:
+O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento e gestão segura de documentos e imagens extraídas via OCR[cite: 3]. O sistema conta com:
 
-- **API REST** (Flask): recebe arquivos via HTTP, processa o OCR e persiste os resultados em um banco SQLite.
+- **Autenticação Segura:** Controlo de acesso baseado em JSON Web Tokens (`flask-jwt-extended`) e senhas encriptadas com Werkzeug[cite: 3].
 
+- **Níveis de Acesso:**
 
-A extração de texto é feita por meio da [API OCR.space](https://ocr.space/ocrapi), com suporte ao idioma **português**.
+  - **Usuário Comum (`user`):** Visualiza e gere apenas os seus próprios históricos de OCR[cite: 3].
+  - **Usuário Master (`master`):** Acesso global e irrestrito a todos os arquivos extraídos por qualquer utilizador do sistema[cite: 3].
+
+- **Integração Externa:** Processamento óptico de caracteres utilizando a [API OCR.space](https://ocr.space/ocrapi) em português.
 
 ### Estrutura de Pastas
 
 ```
 backend/
 ├── backend/
-│   ├── api.py         # Servidor Flask — API REST
-│   ├── database.py    # Conexão e inicialização do banco SQLite
+│   ├── api.py         # Servidor Flask, rotas e documentação Swagger
+│   ├── database.py    # Conexão, schema relacional e gestão SQLite
 │   └── .env           # Variáveis de ambiente (não versionar!)
-├── package.json
-├── package-lock.json
-├── docker-compose.yml
-├── Dockerfile
+├── Dockerfile         # Configuração de container avulsa
 ├── README.md
 ├── requirements.txt
 └── ocr_results.db     # Banco de dados (gerado automaticamente)
@@ -51,14 +52,15 @@ backend/
 
 | Tecnologia | Finalidade |
 |------------|-----------|
-| [Python 3.10+](https://python.org) | Linguagem principal |
-| [Flask](https://flask.palletsprojects.com/) | API REST |
-| [Flask-CORS](https://flask-cors.readthedocs.io/) | Liberação de CORS |
-| [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | Leitura de PDFs |
-| [Pillow](https://pillow.readthedocs.io/) | Manipulação de imagens |
-| [OCR.space API](https://ocr.space/ocrapi) | Reconhecimento de texto (OCR) |
-| [SQLite](https://sqlite.org/) | Banco de dados local |
-| [python-dotenv](https://pypi.org/project/python-dotenv/) | Gerenciamento de variáveis de ambiente |
+| [Python 3.10+](https://python.org) | Linguagem principal do backend[cite: 3] |
+| [Flask](https://flask.palletsprojects.com/) | Framework para construção da API REST[cite: 3] |
+| [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/) | Gestão de autenticação baseada em tokens JWT[cite: 3] |
+| [Flasgger](https://github.com/flasgger/flasgger) | Documentação interativa da API baseada em Swagger/OpenAPI |
+| [Flask-CORS](https://flask-cors.readthedocs.io/) | Liberação de requisições de origem cruzada para o frontend |
+| [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | Leitura e manipulação de documentos PDF[cite: 3] |
+| [Pillow](https://pillow.readthedocs.io/) | Manipulação de imagens[cite: 3] |
+| [OCR.space API](https://ocr.space/ocrapi) | Reconhecimento óptico de texto[cite: 3, 4] |
+| [SQLite](https://sqlite.org/) | Banco de dados relacional leve[cite: 3] |
 
 ---
 
@@ -66,10 +68,11 @@ backend/
 
 Certifique-se de ter instalado em sua máquina:
 
-- **Python 3.10 ou superior** → [Download](https://www.python.org/downloads/)
-- **pip** (incluso com Python)
-- **Git** → [Download](https://git-scm.com/)
-- **Chave de API** gratuita do OCR.space → [Obter chave](https://ocr.space/ocrapi)
+Certifique-se de ter instalado em sua máquina:
+- **Python 3.10 ou superior**[cite: 3]
+- **pip** (incluso com o Python)
+- **Docker** (opcional, caso prefira rodar conteinerizado)
+- **Chave de API** gratuita do OCR.space[cite: 3]
 
 ---
 
@@ -78,7 +81,7 @@ Certifique-se de ter instalado em sua máquina:
 ### 1. Clone o repositório
 
 ```bash
-git clone <url-do-repositorio>
+git clone <https://github.com/7silasmelo7/backendocr>
 cd backend
 ```
 
@@ -102,152 +105,99 @@ source venv/bin/activate
 ### 3. Instale as dependências
 
 ```bash
-pip install flask flask-cors requests Pillow PyMuPDF customtkinter python-dotenv pillow-heif
+pip install --upgrade pip
+```
+
+```bash
+pip install -r requirements.txt
 ```
 
 > **💡 Dica:** `pillow-heif` é **opcional** — adiciona suporte a arquivos `.heic` (fotos de iPhone). Pode ser omitido sem impacto no funcionamento principal.
 
 ---
 
-## ⚙️ Configuração
+## ⚙️ Configure o arquivo .env
 
-Crie ou edite o arquivo `backend/.env` com a sua chave de API:
+Crie um arquivo .env na raiz do backend contendo:
+
 
 ```env
-OCR_API_KEY=SUA_CHAVE_AQUI
+OCR_API_KEY=sua_chave_ocr_space_aqui
+JWT_SECRET_KEY=sua_chave_secreta_jwt_aqui
 ```
 
 > ⚠️ **Importante:** Nunca exponha ou versione este arquivo. Adicione `.env` ao seu `.gitignore`.
 
 ---
 
-## ▶️ Como Executar
+## ⚙️ Execute o servidor Flask
 
-### Modo 1 — API REST (Flask)
+```
 
-```bash
 python -m backend.api
+
 ```
 
-O servidor iniciará em: **`http://localhost:8000`**
-
-Verifique se está funcionando:
-
-```bash
-curl http://localhost:8000/status
-# Resposta: {"status": "API funcionando"}
-```
+O servidor iniciará localmente em: http://localhost:8000
 
 ---
 
-### Modo 2 — Executando com Docker e Docker Compose (Recomendado)
+## 📚 Documentação da API (Swagger)
 
-O projeto conta com um `Dockerfile` e um `docker-compose.yml` pré-configurados, permitindo subir a API inteira e suas dependências com apenas um comando.
+Com o servidor em execução, acesse a interface interativa do Swagger no seu navegador para testar todas as rotas, simular autenticação e verificar os payloads:
 
-**1. Configure as variáveis de ambiente:**
-Certifique-se de ter criado o arquivo `.env` com a sua `OCR_API_KEY` (conforme detalhado na seção [Configuração](#-configuração)).
+👉 http://localhost:8000/apidocs/
 
-**2. Inicie o container:**
-Na raiz da pasta do backend (onde o arquivo `docker-compose.yml` está localizado), execute o comando abaixo no terminal:
+Para testar as rotas protegidas:
 
-```bash
-docker-compose up -d --build
-```
+  1. Faça o login na rota POST /auth/login para obter o seu token JWT.
+
+  2. Clique no botão verde "Authorize" no topo da página do Swagger e cole o token.
+
 ---
 
 ## 🔌 Endpoints da API
 
-### `GET /status`
-Verifica se a API está online.
+### Autenticação e Gestão de Utilizadores
 
-```bash
-curl http://localhost:8000/status
-```
+- POST /auth/cadastro — Cadastra um novo utilizador comum (user).
 
----
+- POST /auth/login — Autentica o utilizador e devolve o token JWT de acesso e a sua respetiva   role.
 
-### `POST /ocr`
-Envia um arquivo para OCR e salva o resultado.
+- POST /auth/criar-master — Cria um utilizador com privilégios administrativos (master).
 
-```bash
-curl -X POST http://localhost:8000/ocr \
-  -F "arquivo=@/caminho/para/arquivo.png"
-```
+- POST /auth/esqueci-senha — Endpoint base para solicitação de recuperação de senha.
 
-**Resposta:**
-```json
-{
-  "id": 1,
-  "texto": "Texto extraído do arquivo..."
-}
-```
+### Sistema e OCR
 
----
+- GET /status — Verifica se a API está online e a operar corretamente.
 
-### `GET /ocr`
-Lista todos os resultados salvos.
+- POST /ocr — Realiza o upload de um arquivo (imagem/PDF), processa via OCR externo e persiste no banco vinculado ao ID do utilizador autenticado[cite: 4].
 
----
+- GET /ocr — Lista todos os registos de OCR.
 
-### `GET /ocr/paginado?pagina=1&limite=10&busca=nome`
-Lista resultados com **paginação** e **busca por nome de arquivo**.
+- GET /ocr/paginado — Lista os resultados de forma paginada e com filtros de busca (aplica restrições automáticas caso seja user comum ou traz visão global caso seja master).
+
+- GET /ocr/{id} — Retorna os detalhes de um registo específico.
+
+- GET /ocr/{id}/imagem — Faz o download da imagem original armazenada.
+
+- GET /ocr/{id}/texto — Faz o download do texto extraído em formato .txt.
+
+- PUT /ocr/{id} — Atualiza o texto extraído de um registo.
+
+- DELETE /ocr/{id} — Remove um registo de OCR do banco de dados.
 
 ---
 
-### `GET /ocr/{id}`
-Retorna os detalhes de um resultado pelo ID.
+## 🗄️ Estrutura do Banco de Dados (SQLite)
 
+O sistema cria automaticamente o arquivo ocr_results.db contendo duas tabelas principais:
+   
+   1. users: Gere os utilizadores (id, email, password_hash, reset_token, role).
+      
+   2. ocr_results: Armazena os dados extraídos (id, user_id, filename, image em BLOB, text,created_at) com chave estrangeira ligada à tabela de utilizadores.
 ---
 
-### `GET /ocr/{id}/imagem`
-Faz o download da imagem original vinculada ao resultado.
 
----
 
-### `GET /ocr/{id}/texto`
-Faz o download do texto extraído em formato `.txt`.
-
----
-
-### `PUT /ocr/{id}`
-Atualiza o texto de um resultado existente.
-
-```bash
-curl -X PUT http://localhost:8000/ocr/1 \
-  -H "Content-Type: application/json" \
-  -d '{"texto": "Novo texto corrigido"}'
-```
-
----
-
-### `DELETE /ocr/{id}`
-Remove um resultado pelo ID.
-
-```bash
-curl -X DELETE http://localhost:8000/ocr/1
-```
-
----
-
-## 📁 Formatos de Arquivo Suportados
-
-| Categoria | Extensões aceitas |
-|-----------|------------------|
-| **Imagens** | `.png` `.jpg` `.jpeg` `.webp` `.bmp` `.tiff` `.heic` |
-| **Documentos** | `.pdf` |
-
----
-
-## 🗄️ Banco de Dados
-
-O banco **SQLite** é criado automaticamente em `ocr_results.db` na primeira execução. Não é necessária nenhuma configuração adicional.
-
-**Tabela: `ocr_results`**
-
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| `id` | `INTEGER` | Chave primária (auto incremento) |
-| `filename` | `TEXT` | Nome do arquivo enviado |
-| `image` | `BLOB` | Imagem original em binário |
-| `text` | `TEXT` | Texto extraído pelo OCR |
-| `created_at` | `TIMESTAMP` | Data e hora do processamento |

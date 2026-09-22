@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import uuid
+from flasgger import Swagger
 
 
 
@@ -19,6 +20,22 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+swagger = Swagger(app, template={
+    "info": {
+        "title": "API de OCR com Níveis de Acesso",
+        "description": "Documentação oficial do MVP de OCR utilizando Flask, JWT e SQLite.",
+        "version": "1.0.0"
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Exemplo: 'Bearer seu_token_aqui'"
+        }
+    }
+})
 
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "4<!Nc6s Gy!j;<^:a>mJ")
 jwt = JWTManager(app)
@@ -60,6 +77,30 @@ def processar_ocr_externo(filename, file_bytes):
 
 @app.route("/auth/cadastro", methods=["POST"])
 def cadastro():
+    """
+    Cadastra um novo usuário comum
+    ---
+    tags:
+      - Autenticação
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              example: "usuario@email.com"
+            senha:
+              type: string
+              example: "123456"
+    responses:
+      201:
+        description: Usuário cadastrado com sucesso!
+      400:
+        description: Email e senha são obrigatórios ou email já cadastrado.
+    """
     dados = request.json
     email = dados.get("email")
     senha = dados.get("senha")
@@ -81,6 +122,30 @@ def cadastro():
 
 @app.route("/auth/login", methods=["POST"])
 def login():
+    """
+    Realiza o login do usuário e retorna o token JWT
+    ---
+    tags:
+      - Autenticação
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              example: "usuario@email.com"
+            senha:
+              type: string
+              example: "123456"
+    responses:
+      200:
+        description: Login realizado com sucesso, retorna o token JWT e a role.
+      401:
+        description: Credenciais inválidas.
+    """
     dados = request.json
     email = dados.get("email")
     senha = dados.get("senha")
@@ -91,13 +156,7 @@ def login():
     user = cursor.fetchone()
     conn.close()
 
-    # Verifica se o usuário existe e se a senha criptografada bate
     if user and check_password_hash(user["password_hash"], senha):
-        identidade = {
-            "id": user["id"],
-            "email": user["email"],
-            "role": user["role"]
-        }
         token_acesso = create_access_token(identity=str(user["id"]))
         return jsonify({"token": token_acesso, "email": email, "role": user["role"]}), 200
     
@@ -105,30 +164,70 @@ def login():
 
 @app.route("/auth/esqueci-senha", methods=["POST"])
 def esqueci_senha():
+    """
+    Solicita a recuperação de senha
+    ---
+    tags:
+      - Autenticação
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              example: "usuario@email.com"
+    responses:
+      200:
+        description: Mensagem informativa de recuperação enviada.
+    """
     dados = request.json
     email = dados.get("email")
-
-    # 1. Verificar se o e-mail existe no banco
-    # 2. Gerar um token único (ex: token = str(uuid.uuid4()))
-    # 3. Salvar esse token na coluna 'reset_token' do usuário
-    # 4. Enviar um e-mail com o link contendo o token (ex: http://seu-site.com/reset?token=XYZ)
-    
-    # Nota: Para envio real de e-mails, você precisará usar bibliotecas como 'flask-mail' ou APIs como SendGrid.
     return jsonify({"mensagem": "Se o e-mail existir, um link de recuperação será enviado."}), 200
 
 
 @app.route("/status", methods=["GET"])
 def status():
+    """
+    Verifica o status da API
+    ---
+    tags:
+      - Sistema
+    responses:
+      200:
+        description: API funcionando normalmente.
+    """
     return jsonify({"status": "API funcionando"}), 200
-
-
 
 
 @app.route("/ocr", methods=["POST"])
 @jwt_required()
 def ocr():
-
-    usuario_atual = get_jwt_identity()
+    """
+    Realiza o upload de uma imagem e processa via OCR externo
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: arquivo
+        in: formData
+        type: file
+        required: true
+        description: Imagem a ser processada pelo OCR
+    responses:
+      201:
+        description: OCR processado e salvo com sucesso.
+      400:
+        description: Arquivo não enviado.
+      401:
+        description: Token JWT ausente ou inválido.
+    """
     user_id = int(get_jwt_identity())
 
     if "arquivo" not in request.files:
@@ -140,14 +239,11 @@ def ocr():
 
     texto = processar_ocr_externo(filename, conteudo)
 
-    # Gera a data e hora  baseada no fuso horário local
     fuso_local = ZoneInfo("America/Sao_Paulo")
     data_atual_local = datetime.now(fuso_local).strftime("%Y-%m-%d %H:%M:%S")
 
     conn = get_connection()
     cursor = conn.cursor()
-    
-    # Salva data e hora local no banco
     cursor.execute(
         "INSERT INTO ocr_results (user_id, filename, image, text, created_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, filename, conteudo, texto, data_atual_local)
@@ -159,11 +255,22 @@ def ocr():
     return jsonify({"id": novo_id, "texto": texto}), 201
 
 
-
-
 @app.route("/ocr", methods=["GET"])
 @jwt_required()
 def listar_ocr():
+    """
+    Lista todos os OCRs cadastrados
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Lista de arquivos recuperada com sucesso.
+      401:
+        description: Não autorizado.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, filename, created_at FROM ocr_results ORDER BY id DESC")
@@ -175,10 +282,37 @@ def listar_ocr():
 @app.route("/ocr/paginado", methods=["GET"])
 @jwt_required()
 def paginado():
-    # Pega o ID diretamente do token e converte para número
+    """
+    Lista os OCRs com paginação e filtro de busca (Respeita regra de acesso Master/User)
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: pagina
+        in: query
+        type: integer
+        required: false
+        description: Número da página (padrão 1)
+      - name: limite
+        in: query
+        type: integer
+        required: false
+        description: Limite de itens por página (padrão 10)
+      - name: busca
+        in: query
+        type: string
+        required: false
+        description: Termo de busca por nome de arquivo
+    responses:
+      200:
+        description: Resultados paginados retornados com sucesso.
+      401:
+        description: Não autorizado.
+    """
     user_id = int(get_jwt_identity())
 
-    # Consulta o banco para descobrir se é 'master' ou 'user'
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT role FROM users WHERE id = ?", (user_id,))
@@ -227,8 +361,33 @@ def paginado():
         "resultados": [dict(row) for row in rows]
     })
 
+
 @app.route("/auth/criar-master", methods=["POST"])
 def criar_master():
+    """
+    Cadastra um usuário com privilégios MASTER
+    ---
+    tags:
+      - Autenticação
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              example: "master@email.com"
+            senha:
+              type: string
+              example: "123456"
+    responses:
+      201:
+        description: Usuário MASTER criado com sucesso!
+      400:
+        description: Erro ao cadastrar ou email já existente.
+    """
     dados = request.json
     email = dados.get("email")
     senha = dados.get("senha")
@@ -237,7 +396,6 @@ def criar_master():
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        # Força o role 'master' diretamente no banco
         cursor.execute("INSERT INTO users (email, password_hash, role) VALUES (?, ?, 'master')", (email, hash_senha))
         conn.commit()
         conn.close()
@@ -249,6 +407,25 @@ def criar_master():
 @app.route("/ocr/<int:item_id>", methods=["GET"])
 @jwt_required()
 def buscar(item_id):
+    """
+    Busca os detalhes de um item OCR específico por ID
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID do registro de OCR
+    responses:
+      200:
+        description: Detalhes do OCR encontrados.
+      404:
+        description: ID não encontrado.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM ocr_results WHERE id = ?", (item_id,))
@@ -269,6 +446,25 @@ def buscar(item_id):
 @app.route("/ocr/<int:item_id>/imagem", methods=["GET"])
 @jwt_required()
 def obter_imagem(item_id):
+    """
+    Faz o download da imagem original salva no OCR por ID
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID do registro
+    responses:
+      200:
+        description: Imagem retornada como arquivo JPEG.
+      404:
+        description: Imagem não encontrada.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT image, filename FROM ocr_results WHERE id = ?", (item_id,))
@@ -288,6 +484,25 @@ def obter_imagem(item_id):
 @app.route("/ocr/<int:item_id>/texto", methods=["GET"])
 @jwt_required()
 def baixar_texto(item_id):
+    """
+    Faz o download do texto extraído em formato .txt
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID do registro
+    responses:
+      200:
+        description: Arquivo de texto (.txt) gerado com sucesso.
+      404:
+        description: ID não encontrado.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT text FROM ocr_results WHERE id = ?", (item_id,))
@@ -307,6 +522,34 @@ def baixar_texto(item_id):
 @app.route("/ocr/<int:item_id>", methods=["PUT"])
 @jwt_required()
 def atualizar(item_id):
+    """
+    Atualiza o texto extraído de um registro de OCR
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID do registro
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            texto:
+              type: string
+              example: "Texto corrigido manualmente"
+    responses:
+      200:
+        description: Registro atualizado com sucesso.
+      400:
+        description: Campo texto ausente.
+    """
     dados = request.json
     if not dados or "texto" not in dados:
         return jsonify({"erro": "Envie JSON com o campo 'texto'"}), 400
@@ -323,6 +566,25 @@ def atualizar(item_id):
 @app.route("/ocr/<int:item_id>", methods=["DELETE"])
 @jwt_required()
 def deletar(item_id):
+    """
+    Remove um registro de OCR do banco de dados
+    ---
+    tags:
+      - OCR
+    security:
+      - Bearer: []
+    parameters:
+      - name: item_id
+        in: path
+        type: integer
+        required: true
+        description: ID do registro a ser excluído
+    responses:
+      200:
+        description: Registro removido com sucesso.
+      401:
+        description: Não autorizado.
+    """
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM ocr_results WHERE id = ?", (item_id,))
