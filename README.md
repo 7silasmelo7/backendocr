@@ -185,7 +185,7 @@ docker build --no-cache -t backend-ocr .
 docker run -d -p 8000:8000 -v dados_ocr:/app --name container-backend backend-ocr
 ```
 
-
+---
 
 ## 📚 Documentação da API (Swagger)
 
