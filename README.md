@@ -1,3 +1,5 @@
+
+
 # 🔍 Leitor Inteligente de OCR com Autenticação e Níveis de Acesso
 
 > Sistema completo de **reconhecimento óptico de caracteres (OCR)** com arquitetura desacoplada, autenticação JWT, múltiplos níveis de acesso (User/Master), documentação interativa via Swagger e persistência em SQLite.
@@ -36,9 +38,11 @@ O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento 
 ```
 backend/
 ├── backend/
+|   ├── .env           # Variáveis de ambiente (não versionar!)
 │   ├── api.py         # Servidor Flask, rotas e documentação Swagger
 │   ├── database.py    # Conexão, schema relacional e gestão SQLite
-│   └── .env           # Variáveis de ambiente (não versionar!)
+|   ├── routes_auth.py # Rota que autentica o login
+│   └── routes_ocr.py  # Rota da api externa ocr
 ├── Dockerfile         # Configuração de container avulsa
 ├── README.md
 ├── requirements.txt
@@ -57,7 +61,6 @@ backend/
 | [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/) | Gestão de autenticação baseada em tokens JWT |
 | [Flasgger](https://github.com/flasgger/flasgger) | Documentação interativa da API baseada em Swagger/OpenAPI |
 | [Flask-CORS](https://flask-cors.readthedocs.io/) | Liberação de requisições de origem cruzada para o frontend |
-| [PyMuPDF (fitz)](https://pymupdf.readthedocs.io/) | Leitura e manipulação de documentos PDF |
 | [Pillow](https://pillow.readthedocs.io/) | Manipulação de imagens |
 | [OCR.space API](https://ocr.space/ocrapi) | Reconhecimento óptico de texto |
 | [SQLite](https://sqlite.org/) | Banco de dados relacional leve |
@@ -66,9 +69,9 @@ backend/
 
 ## ✅ Pré-requisitos
 
-Certifique-se de ter instalado em sua máquina:
 
 Certifique-se de ter instalado em sua máquina:
+
 - **Python 3.10 ou superior**
 - **pip** (incluso com o Python)
 - **Docker** (opcional, caso prefira rodar conteinerizado)
@@ -81,16 +84,19 @@ Certifique-se de ter instalado em sua máquina:
 ### 1. Clone o repositório
 
 ```bash
-git clone <https://github.com/7silasmelo7/backendocr>
+git clone https://github.com/7silasmelo7/backendocr
 
 ```
+
+
+
+
+### 2. Crie e ative um ambiente virtual
+
 
 ```
 cd backend
 ```
-
-
-### 2. Crie e ative um ambiente virtual
 
 ```bash
 # Criar
@@ -121,6 +127,22 @@ pip install -r requirements.txt
 
 ---
 
+### 📡 4. Crie sua conta gratis na OCR.SPACE 
+
+
+
+OCR_API_KEY: https://ocr.space/ocrapi/freekey
+
+---
+
+
+
+### 🔐 5. Crie sua chave encriptografada
+
+JWT_SECRET_KEY: https://jwtsecretkeygenerator.com/
+
+---
+
 ## ⚙️ Configure o arquivo .env
 
 Crie um arquivo .env na raiz do backend contendo:
@@ -146,6 +168,24 @@ python -m backend.api
 O servidor iniciará localmente em: http://localhost:8000
 
 ---
+
+## 🐳 Executando com Docker (Recomendado)
+
+Este projeto contém um Dockerfile configurado para rodar a aplicação flask em um container isolado, cumprindo os requisitos de conteinerização.
+
+1. Construindo a imagem no docker
+
+```
+docker build --no-cache -t backend-ocr .
+```
+
+2. Criando o container com um banco de dados no docker
+
+```
+docker run -d -p 8000:8000 -v dados_ocr:/app --name container-backend backend-ocr
+```
+
+
 
 ## 📚 Documentação da API (Swagger)
 
@@ -203,6 +243,7 @@ O sistema cria automaticamente o arquivo ocr_results.db contendo duas tabelas pr
       
    2. ocr_results: Armazena os dados extraídos (id, user_id, filename, image em BLOB, text,created_at) com chave estrangeira ligada à tabela de utilizadores.
 ---
+
 
 
 
