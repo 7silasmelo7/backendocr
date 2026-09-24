@@ -195,9 +195,11 @@ Com o servidor em execução, acesse a interface interativa do Swagger no seu na
 
 Para testar as rotas protegidas:
 
-  1. Faça o login na rota POST /auth/login para obter o seu token JWT.
+  1. Faça o login com seu email e senha cadastrada na rota POST /auth/login para obter o seu token JWT.
 
-  2. Clique no botão verde "Authorize" no topo da página do Swagger e cole o token.
+  2. Ao obter seu token procura o botão verde no topo da página "Authorize" na opção "Value" coloque Bearer <cole o token gerado>
+
+  3. Clique no botão verde "Authorize".
 
 ---
 
