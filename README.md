@@ -38,15 +38,13 @@ O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento 
 ```
 backend/
 ├── backend/
-|   ├── .env           # Variáveis de ambiente (não versionar!)
-│   ├── api.py         # Servidor Flask, rotas e documentação Swagger
-│   ├── database.py    # Conexão, schema relacional e gestão SQLite
-|   ├── routes_auth.py # Rota que autentica o login
-│   └── routes_ocr.py  # Rota da api externa ocr
-├── Dockerfile         # Configuração de container avulsa
-├── README.md
-├── requirements.txt
-└── ocr_results.db     # Banco de dados (gerado automaticamente)
+│   ├── api.py
+│   ├── database.py
+│   ├── routes_auth.py
+│   └── routes_ocr.py
+├── .env
+├── Dockerfile
+└── requirements.txt
 
 ```
 
