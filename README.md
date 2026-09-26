@@ -33,6 +33,8 @@ O **Leitor Inteligente de OCR** é uma aplicação voltada para o processamento 
 
 - **Integração Externa:** Processamento óptico de caracteres utilizando a [API OCR.space](https://ocr.space/ocrapi) em português.
 
+- **Senha master:** Só pode ser criada via swagger
+
 ### Estrutura de Pastas
 
 ```
@@ -182,6 +184,7 @@ docker build --no-cache -t backend-ocr .
 ```
 docker run -d -p 8000:8000 -v dados_ocr:/app --name container-backend backend-ocr
 ```
+
 
 ---
 
